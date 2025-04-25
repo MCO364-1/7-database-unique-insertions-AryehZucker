@@ -11,10 +11,11 @@ public class Main {
         }
 
         try (DatabaseConnection database = new DatabaseConnection()) {
-            boolean success = database.insertNameIntoDB(firstName, lastName);
+            boolean success = database.insertName(firstName, lastName);
             if (!success) {
                 System.out.println("Name already exists in table");
             }
+            database.displayNameStats();
         }
     }
 

@@ -3,6 +3,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class DatabaseConnection implements AutoCloseable {
 
@@ -11,20 +12,22 @@ public class DatabaseConnection implements AutoCloseable {
             + "user=" + System.getenv("DB_USER") + ";"
             + "password=" + System.getenv("DB_PASSWD") + ";"
             + "encrypt=true;trustServerCertificate=true;loginTimeout=30;";
-    private static final String CHECK_SQL = "SELECT COUNT(*) FROM People WHERE FirstName = ? AND LastName = ?";
-    private static final String INSERT_SQL = "INSERT INTO People (FirstName, LastName) Values (?, ?)";
 
     private final Connection connection;
 
     public DatabaseConnection() throws SQLException {
-        this.connection =  DriverManager.getConnection(CONNECTION_URL);
+        this.connection = DriverManager.getConnection(CONNECTION_URL);
     }
 
-    public boolean insertNameIntoDB(String firstName, String lastName) throws SQLException {
+    /**
+     * @return false if the name is already in the database
+     */
+    public boolean insertName(String firstName, String lastName) throws SQLException {
         if (nameExistsInTable(firstName, lastName)) {
             return false;
         }
-        try (PreparedStatement insertStatement = connection.prepareStatement(INSERT_SQL)) {
+        try (PreparedStatement insertStatement = connection
+                .prepareStatement("INSERT INTO People (FirstName, LastName) Values (?, ?)")) {
             insertStatement.setString(1, firstName);
             insertStatement.setString(2, lastName);
             insertStatement.executeUpdate();
@@ -33,7 +36,8 @@ public class DatabaseConnection implements AutoCloseable {
     }
 
     private boolean nameExistsInTable(String firstName, String lastName) throws SQLException {
-        try (PreparedStatement checkStatement = connection.prepareStatement(CHECK_SQL)) {
+        try (PreparedStatement checkStatement = connection
+                .prepareStatement("SELECT COUNT(*) FROM People WHERE FirstName = ? AND LastName = ?")) {
             checkStatement.setString(1, firstName);
             checkStatement.setString(2, lastName);
             ResultSet results = checkStatement.executeQuery();
@@ -43,6 +47,31 @@ public class DatabaseConnection implements AutoCloseable {
             }
         }
         return false;
+    }
+
+    public void displayNameStats() throws SQLException {
+        displayTotalRecords();
+        displayRecordsPerFirstInitial();
+    }
+
+    private void displayTotalRecords() throws SQLException {
+        try (Statement totalQuery = connection.createStatement()) {
+            ResultSet results = totalQuery.executeQuery("SELECT COUNT(*) FROM People");
+            results.next();
+            System.out.println("Total entries: " + results.getInt(1));
+        }
+    }
+
+    private void displayRecordsPerFirstInitial() throws SQLException {
+        try (PreparedStatement firstInitialQuery = connection
+                .prepareStatement("SELECT COUNT(*) FROM People WHERE UPPER(LEFT(FirstName, 1)) = ?")) {
+            for (char c = 'A'; c <= 'Z'; c++) {
+                firstInitialQuery.setString(1, Character.toString(c));
+                ResultSet results = firstInitialQuery.executeQuery();
+                results.next();
+                System.out.println(c + ": " + results.getString(1));
+            }
+        }
     }
 
     @Override
