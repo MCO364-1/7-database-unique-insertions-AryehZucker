@@ -13,40 +13,21 @@ public class DatabaseConnection implements AutoCloseable {
             + "password=" + System.getenv("DB_PASSWD") + ";"
             + "encrypt=true;trustServerCertificate=true;loginTimeout=30;";
 
+    public static final int CONSTRAINT_ERROR = 2627;
+
     private final Connection connection;
 
     public DatabaseConnection() throws SQLException {
         this.connection = DriverManager.getConnection(CONNECTION_URL);
     }
 
-    /**
-     * @return false if the name is already in the database
-     */
-    public boolean insertName(String firstName, String lastName) throws SQLException {
-        if (nameExistsInTable(firstName, lastName)) {
-            return false;
-        }
+    public void insertName(String firstName, String lastName) throws SQLException {
         try (PreparedStatement insertStatement = connection
                 .prepareStatement("INSERT INTO People (FirstName, LastName) Values (?, ?)")) {
             insertStatement.setString(1, firstName);
             insertStatement.setString(2, lastName);
             insertStatement.executeUpdate();
         }
-        return true;
-    }
-
-    private boolean nameExistsInTable(String firstName, String lastName) throws SQLException {
-        try (PreparedStatement checkStatement = connection
-                .prepareStatement("SELECT COUNT(*) FROM People WHERE FirstName = ? AND LastName = ?")) {
-            checkStatement.setString(1, firstName);
-            checkStatement.setString(2, lastName);
-            ResultSet results = checkStatement.executeQuery();
-            results.next();
-            if (results.getInt(1) > 0) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public void displayNameStats() throws SQLException {

@@ -11,9 +11,14 @@ public class Main {
         }
 
         try (DatabaseConnection database = new DatabaseConnection()) {
-            boolean success = database.insertName(firstName, lastName);
-            if (!success) {
-                System.out.println("Name already exists in table");
+            try {
+                database.insertName(firstName, lastName);
+            } catch (SQLException e) {
+                if (e.getErrorCode() == DatabaseConnection.CONSTRAINT_ERROR) {
+                    System.out.println("Name already exists in table");
+                } else {
+                    throw e;
+                }
             }
             database.displayNameStats();
         }
